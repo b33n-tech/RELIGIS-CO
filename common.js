@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-const supabase = createClient('VOTRE_SUPABASE_URL', 'VOTRE_ANON_KEY')
+const supabase = createClient('https://rkxaprpcetborlslblqj.supabase.co', 'sb_publishable_NpdAjISRkvlmuO6cY3xljA_79dxiqkZ')
 
 export const common = {
     // Enregistre la visite
