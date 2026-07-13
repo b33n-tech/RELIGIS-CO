@@ -1,58 +1,36 @@
-<div class="card" id="app">
-    <h3>Validation Présence</h3>
-    <input type="text" id="prenom" placeholder="Prénom">
-    <input type="text" id="nom" placeholder="Nom">
-    <button onclick="verifierMembre()">Continuer</button>
-</div>
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Accueil</h1>
+    <div id="auth-box">
+        <input id="prenom" placeholder="Prénom"> <input id="nom" placeholder="Nom">
+        <button id="btn">Valider</button>
+    </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    const supabase = createClient('https://rkxaprpcetborlslblqj.supabase.co', 'sb_publishable_NpdAjISRkvlmuO6cY3xljA_79dxiqkZ')
-
-    let tempUser = { prenom: '', nom: '' }
-
-    window.verifierMembre = async () => {
-        tempUser.prenom = document.getElementById('prenom').value.trim()
-        tempUser.nom = document.getElementById('nom').value.trim()
-
-        // 1. Chercher le membre
-        const { data: membre } = await supabase
-            .from('membres')
-            .select('id')
-            .ilike('prenom', tempUser.prenom)
-            .ilike('nom', tempUser.nom)
-            .single()
-
-        if (membre) {
-            await enregistrerVisite(membre.id)
-            afficherMessage(`Bienvenue ${tempUser.prenom} !`)
-        } else {
-            // 2. Pas de match : on propose l'inscription
-            document.getElementById('app').innerHTML = `
-                <p>Membre non reconnu.</p>
-                <p>Vos identifiants seront intégrés aux membres de la plateforme. Continuer ?</p>
-                <button onclick="inscrireEtVisiter()">Oui, rejoindre</button>
-                <button onclick="enregistrerVisite(null)">Visiter anonymement</button>
-            `
-        }
-    }
-
-    window.inscrireEtVisiter = async () => {
-        const { data: newMembre } = await supabase
-            .from('membres')
-            .insert([{ prenom: tempUser.prenom, nom: tempUser.nom }])
-            .select('id')
-            .single()
+    <script type="module">
+        import { common } from './common.js'
         
-        await enregistrerVisite(newMembre.id)
-        afficherMessage(`Bienvenue parmi nous, ${tempUser.prenom} !`)
-    }
-
-    async function enregistrerVisite(membreId) {
-        await supabase.from('logs_presence').insert([{ membre_id: membreId }])
-    }
-
-    function afficherMessage(msg) {
-        document.getElementById('app').innerHTML = `<h3>${msg}</h3><p>Votre présence est enregistrée.</p>`
-    }
-</script>
+        document.getElementById('btn').onclick = async () => {
+            const prenom = document.getElementById('prenom').value
+            const nom = document.getElementById('nom').value
+            
+            const { data: membre } = await common.findMember(prenom, nom)
+            
+            if (membre) {
+                localStorage.setItem('user_id', membre.id)
+                await common.logVisit('accueil', membre.id)
+                alert("Bienvenue " + prenom)
+            } else {
+                if(confirm("Pas reconnu. S'inscrire ?")) {
+                    const { data: newM } = await common.createMember(prenom, nom)
+                    localStorage.setItem('user_id', newM.id)
+                    await common.logVisit('accueil', newM.id)
+                } else {
+                    await common.logVisit('accueil', null)
+                }
+            }
+            window.location.href = 'page2.html'
+        }
+    </script>
+</body>
+</html>
