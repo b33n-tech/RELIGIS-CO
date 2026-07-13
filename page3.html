@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Page 3</h1>
+    <a href="index.html">Retour</a>
+
+    <script type="module">
+        import { common } from './common.js'
+        const userId = localStorage.getItem('user_id')
+        common.logVisit('page3', userId)
+    </script>
+</body>
+</html>
