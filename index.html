@@ -1,69 +1,58 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-in</title>
-    <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 50px; background: #f4f4f9; }
-        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #3ecf8e; border: none; color: white; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #36b37a; }
-    </style>
-</head>
-<body>
-
 <div class="card" id="app">
     <h3>Validation Présence</h3>
     <input type="text" id="prenom" placeholder="Prénom">
     <input type="text" id="nom" placeholder="Nom">
-    <button onclick="validerPresence()">Valider ma venue</button>
+    <button onclick="verifierMembre()">Continuer</button>
 </div>
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    
     const supabase = createClient('https://rkxaprpcetborlslblqj.supabase.co', 'sb_publishable_NpdAjISRkvlmuO6cY3xljA_79dxiqkZ')
 
-    window.validerPresence = async () => {
-        const prenom = document.getElementById('prenom').value.trim()
-        const nom = document.getElementById('nom').value.trim()
+    let tempUser = { prenom: '', nom: '' }
 
-        if (!prenom || !nom) return alert("Veuillez remplir les deux champs.")
+    window.verifierMembre = async () => {
+        tempUser.prenom = document.getElementById('prenom').value.trim()
+        tempUser.nom = document.getElementById('nom').value.trim()
 
-        // 1. Chercher si le membre existe déjà
-        let { data: membre } = await supabase
+        // 1. Chercher le membre
+        const { data: membre } = await supabase
             .from('membres')
             .select('id')
-            .ilike('prenom', prenom)
-            .ilike('nom', nom)
+            .ilike('prenom', tempUser.prenom)
+            .ilike('nom', tempUser.nom)
             .single()
 
-        // 2. Si le membre n'existe pas, on le crée
-        if (!membre) {
-            const { data: newMembre, error } = await supabase
-                .from('membres')
-                .insert([{ prenom, nom }])
-                .select('id')
-                .single()
-            
-            if (error) return alert("Erreur lors de la création du membre.")
-            membre = newMembre
+        if (membre) {
+            await enregistrerVisite(membre.id)
+            afficherMessage(`Bienvenue ${tempUser.prenom} !`)
+        } else {
+            // 2. Pas de match : on propose l'inscription
+            document.getElementById('app').innerHTML = `
+                <p>Membre non reconnu.</p>
+                <p>Vos identifiants seront intégrés aux membres de la plateforme. Continuer ?</p>
+                <button onclick="inscrireEtVisiter()">Oui, rejoindre</button>
+                <button onclick="enregistrerVisite(null)">Visiter anonymement</button>
+            `
         }
+    }
 
-        // 3. Enregistrer la visite
-        const { error: logError } = await supabase
-            .from('logs_presence')
-            .insert([{ membre_id: membre.id }])
+    window.inscrireEtVisiter = async () => {
+        const { data: newMembre } = await supabase
+            .from('membres')
+            .insert([{ prenom: tempUser.prenom, nom: tempUser.nom }])
+            .select('id')
+            .single()
+        
+        await enregistrerVisite(newMembre.id)
+        afficherMessage(`Bienvenue parmi nous, ${tempUser.prenom} !`)
+    }
 
-        if (logError) return alert("Erreur lors du log de présence.")
+    async function enregistrerVisite(membreId) {
+        await supabase.from('logs_presence').insert([{ membre_id: membreId }])
+    }
 
-        document.getElementById('app').innerHTML = `
-            <h3>Bienvenue ${prenom} !</h3>
-            <p>Votre présence est enregistrée.</p>
-        `
+    function afficherMessage(msg) {
+        document.getElementById('app').innerHTML = `<h3>${msg}</h3><p>Votre présence est enregistrée.</p>`
     }
 </script>
-</body>
-</html>
